@@ -22,7 +22,7 @@ int __strncpy(char * dest, char * src , int len)
  * Tokenizer type.  You need to fill in the type as part of your implementation.
  */
 
-typedef enum { START ,ZERO ,  OCTAL , HEX , DIGIT , FLOAT , INT ,ESCAPE ,DOT , EXP , INDEF } STATE ;
+typedef enum { START ,ZERO ,  OCTAL , HEX , DIGIT , FLOAT , PLUSMIN ,DOT , EXP, INDEF } STATE ;
 
 typedef struct TokenizerT_ TokenizerT;
 struct TokenizerT_ {
@@ -46,10 +46,12 @@ int isX(char *a);
 int isHex(char *a);
 int isSpace(char *a);
 int isDot(char *a);
-int isEXP(char *a);
+int isExp(char *a);
+int isPlusMinus(char *a);
 STATE stateTest(char *p , TokenizerT * tk);
+STATE stateAndCharTest(char *p , TokenizerT * tk);
 STATE charTest(char *p);
-
+void stateTokenPrint(char * p , TokenizerT *tk );
 
 
 
@@ -90,7 +92,7 @@ TokenizerT *TKCreate( char * ts ) {
 
 void TKDestroy( TokenizerT * tk ) {
 	free (tk->_str);
-	free (tk);
+	//free (tk);
 }
 /*
  * TKGetNextToken returns the next token from the token stream as a
@@ -106,52 +108,74 @@ void TKDestroy( TokenizerT * tk ) {
 
 char *TKGetNextToken( TokenizerT * tk ) {
 
-
-
-
 /* LOOP FORWARD UNTIL WE SEE : 
  *  1) WHITE SPACE 
  *  2) /0 
  *  3) CHANGE FROM ONE STATE TO ANOTHER STATE. 
  */
 
-char * p = tk->_str + tk->_processedLen ; // points to the last processed item 
-int tokenBeg = tk->_processedLen ;  // token begins from this point onwards. 
 
+	char * p = tk->_str + tk->_processedLen ; // points to the last processed item 
+
+	
+	if(*p == '\0')
+		return NULL;
+
+	int tokenBeg = tk->_processedLen ;  // token begins from this point onwards. 
+	
+	
 	while(*p != '\0')
 	{
-	
-	// STUPID IMPLEMENTATION 
-	STATE prevState = tk->_state;
-	if(tk->_state == START) // START STATE
-	{
-		tk->_state = stateTest(p,tk);
-	}	
-	else // CONTINOUS STATE TRANSITION
-	{
-		tk->_state = stateTest(p,tk);
-	}
+		if(isSpace(p))
+		{
+			int tokenLen =	tk->_processedLen - tokenBeg ;  
+			char * token = (char*)malloc(sizeof(char)* (tokenLen + 1) ) ;
+			__strncpy(token , ( tk->_str  + tokenBeg) , tokenLen);	
+
+			++tk->_processedLen; // we disregard this character during the next try
+			
+			printf("SPACE CHAR");
+
+			return token;		
+		} 
+
+		// STUPID IMPLEMENTATION 
+		STATE prevState = tk->_state;
+
+		printf("%d",tk->_state);
+		tk->_state = stateAndCharTest(p,tk);		
 
 	printf("%d",tk->_state);
-	printf("%c\n",*p);
-
-
-
-
-		if(tk->_state != prevState && prevState != START)
-			break ; 
-
+	printf("%c",*p);
+	printf("%c\n",*(p+1));
+	
+		if(tk->_state != prevState) // if transisition between two states then we know 
+		{
+			
+			printf("PREV : %d ",prevState);
+			printf("CURRENT : %d\n",tk->_state);
+			if(prevState != START &&prevState != ZERO) // allow transition from start and zero
+			{
+				if(prevState != DOT && prevState != EXP && prevState!= PLUSMIN) // allow transition from dot and exp and plusMinus
+				{
+					if(tk->_state != EXP && tk->_state != DOT && tk->_state != PLUSMIN) // allow transition to exp and dot and plus minus
+					{
+						printf("STATE CHANGE : TOKEN FORMED\n");
+						break ; 
+					}
+				}
+			}
+		}
+		
 		++tk->_processedLen;
 		++p;
 	}
 	
-	int tokenLen =	tk->_processedLen - tokenBeg + 1;  
-	printf("TOKEN LEN %d " , tokenLen);
+	int tokenLen =	tk->_processedLen - tokenBeg ;  
 	char * token = (char*)malloc(sizeof(char)* (tokenLen + 1) ) ;
 	// COPY FROM STRING TO TOKEN 
 	__strncpy(token , ( tk->_str  + tokenBeg) , tokenLen);	
 
-	printf("12 :: %s", token);	
 	return token;
 }
 
@@ -159,58 +183,94 @@ int tokenBeg = tk->_processedLen ;  // token begins from this point onwards.
 
 STATE stateAndCharTest(char *p , TokenizerT * tk)
 {
-	
 	STATE st ;
 	switch(tk->_state)
 	{
-		case HEX:
-			if(isHex(p))
-				st = HEX;				
-			else
-				st = charTest(p); 			
-			break;
-		case DIGIT:
-			if(isDigit(p))	
-				st = DIGIT; 
-			else if(isSpace(p))
-				st = INT; // ABSORPTION STATE
+		case ZERO:
+		       	if(isX(p))
+				st = HEX;
 			else if(isDot(p))
 				st = DOT;
-			else
-				st = charTest(p);
-			break;
+			else if(isOctal(p))
+				st = OCTAL;
+			else 
+				st = INDEF;
+			break; 
 
 		case OCTAL:
 			if(isOctal(p))
 				st = OCTAL;
 			else
-				st = charTest(p);
+				st = INDEF;
 			break; 
+
+		case HEX:
+			if(isHex(p))
+				st = HEX;				
+			else
+				st = INDEF;
+			break;
+
+		case DOT:
+			if(isDigit(p))
+				st = FLOAT;
+			else if(isExp(p))
+				st = EXP;
+			else
+				st = INDEF;
+			break;
+
+		case DIGIT:
+			if(isDigit(p))	
+				st = DIGIT; 
+			else if(isDot(p))
+				st = DOT;
+			else if(isExp(p))
+				st = EXP;
+			else
+				st = INDEF;
+			break;
+
+		case EXP:
+			if(isPlusMinus(p))
+				st = PLUSMIN;
+			else if(isDigit(p))
+				st = FLOAT;
+			else 
+				st = INDEF;
+			break;
+	
 		case FLOAT: 
 			if(isDigit(p))
 				st = FLOAT;
+			else if(isExp(p))
+				st = EXP;
 			else
-				st = charTest(p);
+				st = INDEF;
 			break; 
-		case ZERO:
-			st = charTest(p);
-			if(st == DOT)
-				st = FLOAT;
-			else if(st == HEX)
-				st = HEX;
-			else if(st == DIGIT || st == OCTAL)
-				st = OCTAL;
-			break; 
-		case DOT:
-			st = charTest(p);
-			if(st == DIGIT)
+
+		case PLUSMIN:
+			if(isDigit(p))
 				st = FLOAT;
 			else
 				st = INDEF;
-		case EXP:
+			break;
 
+		case START:
+			if ( *p == '0')
+				st = ZERO;
+			else if(isDigit(p))
+			{
+				printf("DIGIT");
+				st = DIGIT;
+			}
+			else
+				st = INDEF;
+			break;
+		case INDEF:
 		default:
-			st = charTest(p);
+			st = INDEF; // ?? 
+				break ; 
 	}
 	return st;
 }
@@ -233,11 +293,15 @@ STATE charTest(char *p)
 	}
 	else if( isX(p))
 	{
-			st = HEX;
+		st = HEX;
 	}
-	else if(isEXP(p))
+	else if(isExp(p))
 	{
 		st = EXP;
+	}
+	else if(isPlusMinus(p))
+	{
+		st = PLUSMIN;
 	}
 	else if(isDigit(p))
 	{
@@ -258,16 +322,45 @@ STATE charTest(char *p)
 	return st;
 }
 
+/*
+ * param p : pointer to c string
+ * param tk: pointer to tokenizer
+ *
+ * FUNC : will print state and token to stdout
+ * SIDE-EFFECT : none
+ *
+ */
+void stateTokenPrint(char * p , TokenizerT *tk )
+{
+	printf("STATE : %d",tk->_state);
+	if(tk->_state == DIGIT)
+		printf("decimal \"%s\"\n",p);
+	else if(tk->_state == OCTAL)
+		printf("octal \"%s\"\n",p);
+	else if(tk->_state == FLOAT)
+		printf("float \"%s\"\n",p);
+	else if(tk->_state == HEX)
+		printf("hex \"%s\"\n",p);
+	else if(tk->_state == ZERO)
+		printf("zero \"%s\"\n",p);
+	else if(tk->_state == INDEF)
+		printf("mal \"%s\"\n",p);
+	else 
+		printf("mal \"%s\"\n",p);
 
+	// resetting the token for the next traversal 
+		tk->_state = START; // START OVER AGAIN
+}
 
 int isOctal(char *a)
-{
-	return atoi(a) <= 7 ; 
+{	
+	int b = (int)(*a - '0');
+	return b>= 0 && b <= 7 ; 
 }
 
 int isDigit(char *a)
 {
-	return isdigit(atoi(a)); 
+	return isdigit(*a);
 }
 
 int isX(char *a)
@@ -277,12 +370,12 @@ int isX(char *a)
 
 int isHex(char *a)
 {
-	return isxdigit(atoi(a));
+	return isxdigit(*a);
 }
 
 int isSpace(char *a)
 {
-	return isspace(atoi(a));
+	return isspace(*a);
 }
 
 int isDot(char *a)
@@ -295,7 +388,7 @@ int isPlusMinus(char *a)
 	return (*a=='+' || *a=='-');
 }
 
-int isEXP(char *a)
+int isExp(char *a)
 {
 	return (*a=='e' || *a=='E');
 }
@@ -322,16 +415,19 @@ int main(int argc, char **argv) {
 	while(1)
 	{
 		char * res = TKGetNextToken(tk);	
-		printf(	" : %s\n",res);		
-		break;
+		if(res == NULL)
+			break ; 
+		stateTokenPrint(res,tk);
 	}	
 
-
-
 	TKDestroy(tk);
-	
 
+//	char * id = argv[1]; 
+//	for(; *id!= 0 ; ++id)
+//		printf(" > %c",*id);
 
+//	char x = 'X';
+//	printf("X : %d ", isX(&x));
 
   return 0;
 }
