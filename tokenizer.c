@@ -160,7 +160,7 @@ char *TKGetNextToken( TokenizerT * tk ) {
 				{
 					if(tk->_state != EXP && tk->_state != DOT && tk->_state != PLUSMIN) // allow transition to exp and dot and plus minus
 					{
-						printf("STATE CHANGE : TOKEN FORMED\n");
+					//	printf("STATE CHANGE : TOKEN FORMED\n");
 						break ; 
 					}
 				}
@@ -275,7 +275,7 @@ STATE stateAndCharTest(char *p , TokenizerT * tk)
 	return st;
 }
 
-
+/*
 STATE charTest(char *p)
 {
 	STATE st ;
@@ -321,6 +321,8 @@ STATE charTest(char *p)
 	}	
 	return st;
 }
+
+*/
 
 /*
  * param p : pointer to c string
