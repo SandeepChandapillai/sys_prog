@@ -134,7 +134,7 @@ char *TKGetNextToken( TokenizerT * tk ) {
 
 			++tk->_processedLen; // we disregard this character during the next try
 			
-			printf("SPACE CHAR");
+//			printf("SPACE CHAR");
 
 			return token;		
 		} 
@@ -142,18 +142,18 @@ char *TKGetNextToken( TokenizerT * tk ) {
 		// STUPID IMPLEMENTATION 
 		STATE prevState = tk->_state;
 
-		printf("%d",tk->_state);
+	//	printf("%d",tk->_state);
 		tk->_state = stateAndCharTest(p,tk);		
 
-	printf("%d",tk->_state);
-	printf("%c",*p);
-	printf("%c\n",*(p+1));
+	//printf("%d",tk->_state);
+	//printf("%c",*p);
+	//printf("%c\n",*(p+1));
 	
 		if(tk->_state != prevState) // if transisition between two states then we know 
 		{
 			
-			printf("PREV : %d ",prevState);
-			printf("CURRENT : %d\n",tk->_state);
+//			printf("PREV : %d ",prevState);
+//			printf("CURRENT : %d\n",tk->_state);
 			if(prevState != START &&prevState != ZERO) // allow transition from start and zero
 			{
 				if(prevState != DOT && prevState != EXP && prevState!= PLUSMIN) // allow transition from dot and exp and plusMinus
@@ -261,7 +261,7 @@ STATE stateAndCharTest(char *p , TokenizerT * tk)
 				st = ZERO;
 			else if(isDigit(p))
 			{
-				printf("DIGIT");
+//				printf("DIGIT");
 				st = DIGIT;
 			}
 			else
@@ -334,7 +334,7 @@ STATE charTest(char *p)
  */
 void stateTokenPrint(char * p , TokenizerT *tk )
 {
-	printf("STATE : %d",tk->_state);
+	//printf("STATE : %d",tk->_state);
 	if(tk->_state == DIGIT)
 		printf("decimal \"%s\"\n",p);
 	else if(tk->_state == OCTAL)
